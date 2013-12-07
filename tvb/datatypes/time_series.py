@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -89,6 +89,27 @@ class TimeSeriesEEG(time_series_scientific.TimeSeriesEEGScientific,
 
 class TimeSeriesMEG(time_series_scientific.TimeSeriesMEGScientific,
                     time_series_framework.TimeSeriesMEGFramework, TimeSeries):
+    """
+    This class brings together the scientific and framework methods that are
+    associated with the TimeSeriesMEG datatype.
+    
+    ::
+        
+                         TimeSeriesMEGData
+                                 |
+                                / \\
+          TimeSeriesMEGFramework   TimeSeriesMEGScientific
+                                \ /
+                                 |
+                           TimeSeriesMEG
+        
+    
+    """
+    pass
+
+
+class TimeSeriesSEEG(time_series_scientific.TimeSeriesSEEGScientific,
+                    time_series_framework.TimeSeriesSEEGFramework, TimeSeries):
     """
     This class brings together the scientific and framework methods that are
     associated with the TimeSeriesMEG datatype.

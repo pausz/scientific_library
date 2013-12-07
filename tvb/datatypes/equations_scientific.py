@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -36,37 +36,36 @@ Scientific methods for the Equation datatypes.
 
 """
 
-# from third-party python packages
 import numexpr
 import numpy
-
-# From "The Virtual Brain"
 import tvb.datatypes.equations_data as equations_data
 
-#NOTE: Maybe create a Waveform or PerioodicEquation datatype
+
 
 class EquationScientific(equations_data.EquationData):
     """ This class exists to add scientific methods to EquationData. """
     __tablename__ = None
-    
-    
+
+
     def _find_summary_info(self):
         """
         Gather scientifically interesting summary information from an instance
         of this datatype.
         """
-        summary = {"Equation type": self.__class__.__name__}
-        summary["equation"] = self.trait["equation"].doc
-        summary["parameters"] = self.parameters
+        summary = {"Equation type": self.__class__.__name__,
+                   "equation": self.trait["equation"].doc,
+                   "parameters": self.parameters}
         return summary
-        
+
+
     #------------------------------ pattern -----------------------------------#
     def _get_pattern(self):
         """
         Return a discrete representation of the equation.
         """
         return self._pattern
-        
+
+
     def _set_pattern(self, var):
         """
         Generate a discrete representation of the equation for the space
@@ -79,29 +78,19 @@ class EquationScientific(equations_data.EquationData):
         as we need it for LocalConnectivity...
         
         """
-        
-        self._pattern = numexpr.evaluate(self.equation,
-                                         global_dict = self.parameters)
-    
+
+        self._pattern = numexpr.evaluate(self.equation, global_dict=self.parameters)
+
+
     pattern = property(fget=_get_pattern, fset=_set_pattern)
     #--------------------------------------------------------------------------#
 
 
-class FiniteSupportEquationScientific(equations_data.FiniteSupportEquationData,
-                                      EquationScientific):
-    """ This class exists to add scientific methods to FiniteSupportEquationData """
-    pass
 
-
-class DiscreteScientific(equations_data.DiscreteData,
-                         FiniteSupportEquationScientific):
+class DiscreteEquationScientific(equations_data.DiscreteEquationData, EquationScientific):
     """ This class exists to add scientific methods to DiscreteData """
     pass
 
-
-#class ScalingScientific(equations_data.ScalingData, EquationScientific):
-#    """ This class exists to add scientific methods to ScalingData """
-#    pass
 
 
 class LinearScientific(equations_data.LinearData, EquationScientific):
@@ -109,28 +98,29 @@ class LinearScientific(equations_data.LinearData, EquationScientific):
     pass
 
 
-class GaussianScientific(equations_data.GaussianData,
-                         FiniteSupportEquationScientific):
+
+class GaussianScientific(equations_data.GaussianData, EquationScientific):
     """ This class exists to add scientific methods to GaussianData """
     pass
 
 
-class DoubleGaussianScientific(equations_data.DoubleGaussianData,
-                               FiniteSupportEquationScientific):
+
+class DoubleGaussianScientific(equations_data.DoubleGaussianData, EquationScientific):
     """ This class exists to add scientific methods to DoubleGaussianData """
     pass
 
 
-class SigmoidScientific(equations_data.SigmoidData,
-                        FiniteSupportEquationScientific):
+
+class SigmoidScientific(equations_data.SigmoidData, EquationScientific):
     """ This class exists to add scientific methods to SigmoidData """
     pass
-    
 
-class GeneralizedSigmoidScientific(equations_data.GeneralizedSigmoidData,
-                                   EquationScientific):
+
+
+class GeneralizedSigmoidScientific(equations_data.GeneralizedSigmoidData, EquationScientific):
     """ This class exists to add scientific methods to GeneralizedSigmoidData """
     pass
+
 
 
 class SinusoidScientific(equations_data.SinusoidData, EquationScientific):
@@ -138,23 +128,30 @@ class SinusoidScientific(equations_data.SinusoidData, EquationScientific):
     pass
 
 
+
 class CosineScientific(equations_data.CosineData, EquationScientific):
     """ This class exists to add scientific methods to CosineData """
     pass
-    
+
+
+
 class AlphaScientific(equations_data.AlphaData, EquationScientific):
     """ This class exists to add scientific methods to AlphaData """
     pass
-    
+
+
+
 class PulseTrainScientific(equations_data.PulseTrainData, EquationScientific):
     """ This class exists to add scientific methods to PulseTrainData """
-    
+
+
     def _get_pattern(self):
         """
         Return a discrete representation of the equation.
         """
         return self._pattern
-        
+
+
     def _set_pattern(self, var):
         """
         Generate a discrete representation of the equation for the space
@@ -167,18 +164,125 @@ class PulseTrainScientific(equations_data.PulseTrainData, EquationScientific):
         as we need it for LocalConnectivity...
         
         """
-       
+
         # rolling in the deep ...  
         onset = self.parameters["onset"]
-        off = var < onset 
-        var = numpy.roll(var, int(off.sum()+1))
-        var[:,0:off.sum()] = 0.0
-        self._pattern = numexpr.evaluate(self.equation,
-                                         global_dict = self.parameters)
-        self._pattern[:,0:off.sum()] = 0.0
-    
+        off = var < onset
+        var = numpy.roll(var, int(off.sum() + 1))
+        var[:, 0:off.sum()] = 0.0
+        self._pattern = numexpr.evaluate(self.equation, global_dict=self.parameters)
+        self._pattern[:, 0:off.sum()] = 0.0
+
+
     pattern = property(fget=_get_pattern, fset=_set_pattern)
+
+
+
+class GammaScientific(equations_data.GammaData, EquationScientific):
+    """ This class exists to add scientific methods to GammaData """
+
+    #------------------------------ pattern -----------------------------------#
+
+    def _get_pattern(self):
+        """
+        Return a discrete representation of the equation.
+        """
+        return self._pattern
+
+
+    def _set_pattern(self, var):
+        """
+        Generate a discrete representation of the equation for the space
+        represented by ``var``.
         
-    
+        .. note: numexpr doesn't support factorial yet
+        
+        """
+
+        # compute the factorial  
+        n = int(self.parameters["n"])
+        product = 1
+        for i in range(n - 1):
+            product *= i + 1
+
+        self.parameters["factorial"] = product
+
+        self._pattern = numexpr.evaluate(self.equation,
+                                         global_dict=self.parameters)
+        self._pattern /= max(self._pattern)
+
+        self._pattern *= self.parameters["a"]
+
+
+    pattern = property(fget=_get_pattern, fset=_set_pattern)
+    #--------------------------------------------------------------------------#
+
+
+
+class DoubleExponentialScientific(equations_data.DoubleExponentialData, EquationScientific):
+    """ This class exists to add scientific methods to DoubleExponentialData """
+
+    #------------------------------ pattern -----------------------------------#
+
+    def _get_pattern(self):
+        """
+        Return a discrete representation of the equation.
+        """
+        return self._pattern
+
+
+    def _set_pattern(self, var):
+        """
+        Generate a discrete representation of the equation for the space
+        represented by ``var``.
+        
+        """
+
+        self._pattern = numexpr.evaluate(self.equation, global_dict=self.parameters)
+        self._pattern /= max(self._pattern)
+
+        self._pattern *= self.parameters["a"]
+
+
+    pattern = property(fget=_get_pattern, fset=_set_pattern)
+    #--------------------------------------------------------------------------#
+
+
+
+class FirstOrderVolterraScientific(equations_data.FirstOrderVolterraData, EquationScientific):
+    """ This class exists to add scientific methods to FirstOrderVolterraData """
     pass
 
+
+
+class MixtureOfGammasScientific(equations_data.MixtureOfGammasData, EquationScientific):
+    """ This class exists to add scientific methods to MixtureOfGammasData """
+
+    #------------------------------ pattern -----------------------------------#
+
+    def _get_pattern(self):
+        """
+        Return a discrete representation of the equation.
+        """
+        return self._pattern
+
+
+    def _set_pattern(self, var):
+        """
+        Generate a discrete representation of the equation for the space
+        represented by ``var``.
+        
+        .. note: numexpr doesn't support gamma function
+        
+        """
+
+        # get gamma functions
+        from scipy.special import gamma as sp_gamma  
+        self.parameters["gamma_a_1"] = sp_gamma(self.parameters["a_1"])
+        self.parameters["gamma_a_2"] = sp_gamma(self.parameters["a_2"])
+
+        self._pattern = numexpr.evaluate(self.equation, global_dict=self.parameters)
+
+
+    pattern = property(fget=_get_pattern, fset=_set_pattern)
+    #--------------------------------------------------------------------------#

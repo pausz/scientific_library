@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -194,11 +194,11 @@ class Linear(Coupling):
 
 
         """
-        input = (g_ij * x_j).sum(axis=0)
-        return self.a * input + self.b
+        coupled_input = (g_ij * x_j).sum(axis=0)
+        return self.a * coupled_input + self.b
 
     device_info = coupling_device_info(
-        pars = [a, b],
+        pars = ['a', 'b'],
         kernel = """
 
         // parameters
@@ -229,7 +229,7 @@ class Scaling(Coupling):
 
     """
 
-    scaling_factor = basic.Float(
+    a = basic.Float(
         label="Scaling factor",
         default = 0.00390625,
         range = basic.Range(lo = 0.0, hi = 0.2, step = 0.01),
@@ -243,15 +243,15 @@ class Scaling(Coupling):
         evaluated has the following form:
 
             .. math::
-                scaling_factor x 
+                a x 
 
 
         """
-        input = (g_ij * x_j).sum(axis=0)
-        return self.scaling_factor * input
+        coupled_input = (g_ij * x_j).sum(axis=0)
+        return self.a * coupled_input
 
     device_info = coupling_device_info(
-        pars = [scaling_factor],
+        pars = ['a'],
         kernel = """
 
         // parameters
@@ -263,6 +263,58 @@ class Scaling(Coupling):
 
         """
         )
+
+
+
+class HyperbolicTangent(Coupling):
+    """
+    Hyperbolic tangent. 
+    This coupling will be used mainly when the delayed 
+    state needs to be transformed (eg, voltage to rate)
+
+
+    """
+    #NOTE: The defaults here produce something close to the current default for
+    #      Linear (a=0.00390625, b=0) over the linear portion of the sigmoid,
+    #      with saturation at -1 and 1.
+
+    a = arrays.FloatArray(
+        label = ":math:`a`", 
+        default = numpy.array([0.0]),
+        range = basic.Range(lo = -1000.0, hi = 1000.0, step = 10.0),
+        doc = """Minimum of the sigmoid function""",
+        order = 1)
+
+    midpoint = arrays.FloatArray(
+        label = "midpoint", 
+        default = numpy.array([0.0,]),
+        range = basic.Range(lo = -1000.0, hi = 1000.0, step = 10.0),
+        doc = """Midpoint of the linear portion of the sigmoid""",
+        order = 3)
+
+    sigma = arrays.FloatArray(
+        label = r":math:`\sigma`",
+        default = numpy.array([0.0,]),
+        range = basic.Range(lo = 0.01, hi = 1000.0, step = 10.0),
+        doc = """Standard deviation of the ...""",
+        order = 4)
+
+
+    def __call__(self, g_ij, x_i, x_j):
+        r"""
+        Evaluate the Sigmoidal function for the arg ``x``. The equation being
+        evaluated has the following form:
+
+            .. math::
+
+
+        """
+        # Get Q_j 
+        temp =  self.a * (1 +  numpy.tanh((x_j - self.midpoint) / self.sigma))
+        # Average
+        coupled_input = (g_ij*temp).mean(axis=0)
+        
+        return coupled_input
 
 
 
@@ -327,13 +379,13 @@ class Sigmoidal(Coupling):
 
 
         """
-        input = (g_ij * x_j).sum(axis=0)
+        coupled_input = (g_ij * x_j).sum(axis=0)
         sig = self.cmin + ((self.cmax - self.cmin) / (1.0 +
-            numpy.exp(-self.pi_on_sqrt3 * ((input - self.midpoint) / self.sigma))))
+              numpy.exp(-self.pi_on_sqrt3 * ((coupled_input - self.midpoint) / self.sigma))))
         return sig
 
     device_info = coupling_device_info(
-        pars = [cmin, cmax, midpoint, sigma],
+        pars = ['cmin', 'cmax', 'midpoint', 'sigma'],
         kernel = """
         // load parameters
         float cmin     = P(0)
@@ -376,7 +428,7 @@ class Difference(Coupling):
         return self.a*(g_ij*(x_j - x_i)).sum(axis=0)
 
     device_info = coupling_device_info(
-        pars = [a],
+        pars = ['a'],
         kernel = """
         // load parameters
         float a = P(0);
@@ -410,7 +462,7 @@ class Kuramoto(Coupling):
         return self.a*(g_ij*sin(x_j - x_i)).sum(axis=0)
 
     device_info = coupling_device_info(
-        pars = [a],
+        pars = ['a'],
         kernel = """
         // load parameters
         float a = P(0);

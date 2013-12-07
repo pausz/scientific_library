@@ -24,15 +24,13 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
 """
 Demonstrate using the simulator at the region level, deterministic integration, stereo-EEG
 
-``Run time``: approximately 2 seconds (workstation circa 2010)
-``Memory requirement``: < 1GB
 
 .. moduleauthor:: Jan Fousek <izaak@mail.muni.cz>
 .. moduleauthor:: Stuart A. Knock <Stuart@tvb.invalid>
@@ -41,6 +39,7 @@ Demonstrate using the simulator at the region level, deterministic integration, 
 import numpy
 from tvb.simulator.lab import *
 import tvb.datatypes.sensors as sensors
+
 
 
 ##----------------------------------------------------------------------------##
@@ -131,5 +130,3 @@ title("SEEG measurement")
 
 #Show them
 show()
-
-###EoF###

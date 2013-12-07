@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 """
@@ -54,7 +54,7 @@ class ConnectivityTest(BaseTestCase):
         """
         conn = connectivity.Connectivity()
         conn.configure()
-        # Check for value from demodata/connectivity/o52r00_irp2008
+        # Check for value from demo_data/connectivity/o52r00_irp2008
         self.assertEqual(conn.weights.shape, (74, 74))
         self.assertEqual(conn.weights.max(), 3.0)
         self.assertEqual(conn.weights.min(), 0.0)

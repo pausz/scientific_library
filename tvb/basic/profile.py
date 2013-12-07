@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -36,6 +36,32 @@ Contains functionality which allows a user to set a certain profile for TVB.
 import os
 import sys
 
+
+class LibraryModulesFinder():
+    """
+    In case users run TVB in 'library' profile access should be restricted
+    to some parts of tvb.
+    """
+    restricted_modules = ['tvb.interfaces',
+                          'tvb.datatype_removers',
+                          'tvb.core',
+                          'tvb.config',
+                          'tvb.adapters']
+    
+    
+    def find_module(self, fullname, path=None):
+        if fullname in self.restricted_modules:
+            return self
+        
+        
+    def load_module(self, module_name):
+        info_message = str("You are trying to import the module `%s` in library mode."
+                           "The library profile is a lightweight version of TVB and you "
+                           "only have access to the simulator, analyzers and datatypes packages."
+                           "If you want to use the entire TVB Framework start it either in command "
+                           "or web interface profile." % module_name)
+        raise ImportError(info_message)
+    
 
 class TvbProfile():
     """
@@ -98,7 +124,7 @@ class TvbProfile():
             # python -m will always consider the current folder as the first to search in.
             sys.path = os.environ.get("PYTHONPATH", "").split(os.pathsep) + sys.path
             for key in sys.modules.keys():
-                if key.startswith("tvb") and  sys.modules[key]:
+                if key.startswith("tvb") and sys.modules[key]:
                     reload(sys.modules[key])
 
         if selected_profile is not None:
@@ -107,6 +133,9 @@ class TvbProfile():
             if remove_from_args:
                 script_argv.remove(selected_profile)
                 script_argv.remove(TvbProfile.SUBPARAM_PROFILE)
+                
+            if selected_profile == TvbProfile.LIBRARY_PROFILE:
+                sys.meta_path.append(LibraryModulesFinder())
         
 
     @staticmethod

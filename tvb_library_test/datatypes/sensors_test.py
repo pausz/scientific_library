@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 """
@@ -32,21 +32,20 @@ Created on Mar 20, 2013
 
 .. moduleauthor:: Bogdan Neacsa <bogdan.neacsa@codemart.ro>
 """
+
 if __name__ == "__main__":
     from tvb_library_test import setup_test_console_env
-
     setup_test_console_env()
 
 import unittest
 from tvb.datatypes import sensors, surfaces
 from tvb_library_test.base_testcase import BaseTestCase
 
+class SensorsTest(BaseTestCase):
     """
     Tests the defaults for `tvb.datatypes.sensors` module.
     """
 
-
-class SensorsTest(BaseTestCase):
     def test_sensors(self):
         surf = surfaces.SkinAir()
         surf.configure()

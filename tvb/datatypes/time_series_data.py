@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -100,7 +100,7 @@ class TimeSeriesEEGData(TimeSeriesData):
     """ A time series associated with a set of EEG sensors. """
     _ui_name = "EEG time-series"
     sensors = sensors_module.SensorsEEG
-    labels_ordering = basic.List(default=["Time", "EEG Sensor"])
+    labels_ordering = basic.List(default=["Time", "1", "EEG Sensor", "1"])
 
 
 
@@ -108,7 +108,14 @@ class TimeSeriesMEGData(TimeSeriesData):
     """ A time series associated with a set of MEG sensors. """
     _ui_name = "MEG time-series"
     sensors = sensors_module.SensorsMEG
-    labels_ordering = basic.List(default=["Time", "MEG Sensor"])
+    labels_ordering = basic.List(default=["Time", "1", "MEG Sensor", "1"])
+    
+    
+class TimeSeriesSEEGData(TimeSeriesData):
+    """ A time series associated with a set of Internal sensors. """
+    _ui_name = "Stereo-EEG time-series"
+    sensors = sensors_module.SensorsInternal
+    labels_ordering = basic.List(default=["Time", "1", "sEEG Sensor", "1"])
 
 
 

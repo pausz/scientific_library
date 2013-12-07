@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 """
@@ -32,15 +32,12 @@ Created on Mar 20, 2013
 
 .. moduleauthor:: Bogdan Neacsa <bogdan.neacsa@codemart.ro>
 """
-if __name__ == "__main__":
-    from tvb_library_test import setup_test_console_env
-    setup_test_console_env()
     
 import unittest
-
 from tvb.datatypes import equations
 from tvb_library_test.base_testcase import BaseTestCase
-        
+
+
 class EquationsTest(BaseTestCase):
     """
     Tests the defaults for `tvb.datatypes.equations` module.
@@ -50,16 +47,16 @@ class EquationsTest(BaseTestCase):
         dt = equations.Equation()
         self.assertEqual(dt.parameters, {})
         self.assertEqual(dt.ui_equation, '')
-        
+
         
     def test_finitesupportequation(self):
         dt = equations.FiniteSupportEquation()
         self.assertEqual(dt.parameters, {})
         self.assertEqual(dt.ui_equation, '')
-        
-        
+
+
     def test_discrete(self):
-        dt = equations.Discrete()
+        dt = equations.DiscreteEquation()
         self.assertEqual(dt.parameters, {})
         self.assertEqual(dt.ui_equation, 'var')
         
@@ -81,10 +78,10 @@ class EquationsTest(BaseTestCase):
         self.assertEqual(dt.parameters, {'midpoint_2': 0.0, 'midpoint_1': 0.0, 
                                          'amp_2': 1.0, 'amp_1': 0.5, 'sigma_2': 10.0, 
                                          'sigma_1': 20.0})
-        self.assertEqual(dt.ui_equation, '(amp_1 * 2.71**(-((var-midpoint_1)**2 / '
-        '(2.0 * sigma_1**2)))) - (amp_2 * 2.71**(-((var-midpoint_2)**2 / (2.0 * sigma_2**2))))')
-        
-        
+        self.assertEqual(dt.ui_equation, '(amp_1 * 2.71**(-((var-midpoint_1)**2 / (2.0 * sigma_1**2)))) - '
+                                         '(amp_2 * 2.71**(-((var-midpoint_2)**2 / (2.0 * sigma_2**2))))')
+
+
     def test_sigmoid(self):
         dt = equations.Sigmoid()
         self.assertEqual(dt.parameters, {'amp': 1.0, 'radius': 5.0, 'sigma': 1.0})
@@ -95,7 +92,7 @@ class EquationsTest(BaseTestCase):
         dt = equations.GeneralizedSigmoid() 
         self.assertEqual(dt.parameters, {'high': 1.0, 'midpoint': 1.0, 'sigma': 0.3, 'low': 0.0})
         self.assertEqual(dt.ui_equation, 'low + (high - low) / (1.0 + 2.71**(-1.8137993642342178 * '
-        '(var-midpoint)/sigma))')
+                                         '(var-midpoint)/sigma))')
         
         
     def test_sinusoiddata(self):
@@ -113,15 +110,14 @@ class EquationsTest(BaseTestCase):
     def test_alpha(self):
         dt = equations.Alpha()
         self.assertEqual(dt.parameters, {'onset': 0.5, 'alpha': 13.0, 'beta': 42.0})
-        self.assertEqual(dt.ui_equation,
-                        "(alpha * beta) / (beta - alpha) * (2.71**(-alpha * (var-onset)) - "
-                        "2.71**(-beta * (var-onset))) if (var-onset) > 0 else  0.0 * var")
+        self.assertEqual(dt.ui_equation, "(alpha * beta) / (beta - alpha) * (2.71**(-alpha * (var-onset)) - "
+                                         "2.71**(-beta * (var-onset))) if (var-onset) > 0 else  0.0 * var")
         
         
     def test_pulsetrain(self):
         dt = equations.PulseTrain()
         self.assertEqual(dt.parameters, {'onset': 30.0, 'tau': 13.0, 'T': 42.0, 'amp': 1.0})
-        self.assertEqual(dt.ui_equation, 'amp if (var % T) < tau else 0.0 * var')
+        self.assertEqual(dt.ui_equation, 'amp if (var % T) <= tau and var >= onset else 0.0 * var')
         
         
 def suite():

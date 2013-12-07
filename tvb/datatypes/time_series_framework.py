@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -32,6 +32,7 @@
 
 Framework methods for the TimeSeries datatypes.
 
+.. moduleauthor:: Ciprian Tomoiaga <ciprian.tomoiaga@codemart.ro>
 .. moduleauthor:: Lia Domide <lia.domide@codemart.ro>
 .. moduleauthor:: Stuart A. Knock <Stuart@tvb.invalid>
 .. moduleauthor:: Marmaduke Woodman <mw@eml.cc>
@@ -175,13 +176,13 @@ class TimeSeriesFramework(time_series_data.TimeSeriesData):
         self.store_data_chunk("data", partial_result, grow_dimension=0, close_file=False)
 
 
-    def get_min_max_values(self, page_size=500, specific_slices=None):
+    def get_min_max_values(self):
         """
-        Compute a good approximation for MIN and MAX values of the current array.
-        Will be taken in consideration only the first page of data.
+        Retrieve the minimum and maximum values from the metadata.
+        :returns: (minimum_value, maximum_value)
         """
-        first_page = self.read_data_page(0, page_size, specific_slices)
-        return numpy.min(first_page), numpy.max(first_page)
+        metadata = self.get_metadata('data')
+        return metadata["Minimum"], metadata["Maximum"]
 
 
     def get_space_labels(self):
@@ -235,6 +236,21 @@ class TimeSeriesMEGFramework(time_series_data.TimeSeriesMEGData, TimeSeriesFrame
         if self.sensors is not None:
             return list(self.sensors.labels)
         return []
+    
+    
+class TimeSeriesSEEGFramework(time_series_data.TimeSeriesSEEGData, TimeSeriesFramework):
+    """
+    This class exists to add framework methods to TimeSeriesMEGData.
+    """
+
+
+    def get_space_labels(self):
+        """
+        :return: An array of strings with the sensors labels.
+        """
+        if self.sensors is not None:
+            return list(self.sensors.labels)
+        return []
 
 
 
@@ -262,6 +278,10 @@ class TimeSeriesSurfaceFramework(time_series_data.TimeSeriesSurfaceData, TimeSer
 
 class TimeSeriesVolumeFramework(time_series_data.TimeSeriesVolumeData, TimeSeriesFramework):
     """ This class exists to add framework methods to TimeSeriesVolumeData. """
-    pass
 
+    def get_volume_slice(self, from_idx, to_idx):
+        from_idx, to_idx = int(from_idx), int(to_idx)
+        overall_shape = self.read_data_shape()
 
+        slices = (slice(from_idx, to_idx), slice(overall_shape[1]), slice(overall_shape[2]), slice(overall_shape[3]))
+        return self.read_data_slice(tuple(slices))

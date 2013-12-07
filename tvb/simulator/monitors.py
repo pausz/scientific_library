@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 """
@@ -47,9 +47,9 @@ Conversion of power of 2 sample-rates(Hz) to Monitor periods(ms)
 
 
 .. moduleauthor:: Stuart A. Knock <Stuart@tvb.invalid>
+.. moduleauthor:: Paula Sanz Leon <Paula@tvb.invalid>
 .. moduleauthor:: Noelia Montejo <Noelia@tvb.invalid>
 .. moduleauthor:: Marmaduke Woodman <mw@eml.cc>
-.. moduleauthor:: Paula Sanz Leon <Paula@tvb.invalid>
 .. moduleauthor:: Jan Fousek <izaak@mail.muni.cz>
 
 """
@@ -66,6 +66,7 @@ LOG = get_logger(__name__)
 import tvb.datatypes.sensors as sensors_module
 import tvb.datatypes.arrays as arrays
 import tvb.datatypes.projections as projections
+import tvb.datatypes.equations as equations
 
 import tvb.basic.traits.util as util
 import tvb.basic.traits.types_basic as basic
@@ -122,7 +123,7 @@ class Monitor(core.Type):
         LOG.debug(str(kwargs))
 
         self.istep = None #Monitor period in integration time-steps (integer).
-        self.dt = None #Integration time-step in "physical" units.
+        self.dt = None  #Integration time-step in "physical" units.
         self.voi = None
 
         self._stock = numpy.array([], dtype=numpy.float64)
@@ -909,7 +910,7 @@ class SphericalMEG(Monitor):
         super(SphericalMEG, self).config_for_sim(simulator)
 
         #the magnetic constant = 1.25663706 × 10-6 m kg s-2 A-2  (H/m)
-        mu_0 = 1.25663706 #mH/mm #TODO: Think units are wrong, should still be × 10-6
+        mu_0 = 1.25663706e-6 #mH/mm
 
         #parameter to
         #sigma = 1.0
@@ -926,7 +927,7 @@ class SphericalMEG(Monitor):
             Q = simulator.surface.vertex_normals
 
         centre = numpy.mean(r_0, axis=0)[numpy.newaxis, :]
-        radius = 1.25 * max(numpy.sqrt(numpy.sum((r_0 - centre)**2, axis=1)))
+        radius = 1.01 * max(numpy.sqrt(numpy.sum((r_0 - centre)**2, axis=1)))
 
         #Stick sensors on a sphere enclosing the sources...
         # use local to avoid modifying H5 data file
@@ -994,7 +995,6 @@ class SphericalMEG(Monitor):
             return [time, meg.transpose((1, 0, 2))]
 
 
-
 #NOTE: It's probably best to do voxelisation as an offline "analysis" style
 #      process, returning region or surface timeseries for BOLD based on the
 #      simulation. The voxelisation only really makes sense for surface anyway,
@@ -1003,8 +1003,19 @@ class SphericalMEG(Monitor):
 class Bold(Monitor):
     """
 
-    A Ballon-Windkessel like model  
+    Base class for the Bold monitor.
 
+    **Attributes**
+    
+        hrf_kernel: the haemodynamic response function (HRF) used to compute 
+                    the BOLD (Blood Oxygenation Level Dependent) signal.
+
+        length    : duration of the hrf in seconds.
+
+        period    : the monitor's period
+
+    **References**:
+      
     .. [B_1997] Buxton, R. and Frank, L., *A Model for the Coupling between 
         Cerebral Blood Flow and Oxygen Metabolism During Neural Stimulation*,
         17:64-72, 1997.
@@ -1013,12 +1024,29 @@ class Bold(Monitor):
         Responses in fMRI: The Balloon Model, Volterra Kernels, and Other 
         Hemodynamics*, NeuroImage, 12, 466 - 477, 2000.
 
-    .. VJ derivation...
+    .. [B_1996] Geoffrey M. Boynton, Stephen A. Engel, Gary H. Glover and David 
+        J. Heeger (1996). Linear Systems Analysis of Functional Magnetic Resonance 
+        Imaging in Human V1. J Neurosci 16: 4207-4221
+
+    .. [P_2000] Alex Polonsky, Randolph Blake, Jochen Braun and David J. Heeger
+        (2000). Neuronal activity in human primary visual cortex correlates with
+        perception during binocular rivalry. Nature Neuroscience 3: 1153-1159
+
+    .. [G_1999] Glover, G. *Deconvolution of Impulse Response in Event-Related BOLD fMRI*.
+        NeuroImage 9, 416-429, 1999.
+
+  
+    .. VJ derivation in the review paper.
 
     .. note:: LIMITATIONS: sampling period must be integer multiple of 500ms
 
     .. note:: CONSIDERATIONS: It is  sensible to use this monitor if your 
               simulation length is > 30s (30000ms)
+
+    .. note:: gamma and polonsky are based on the nitime implementation
+              http://nipy.org/nitime/api/generated/nitime.fmri.hrf.html
+
+    .. note:: see Tutorial_Exploring_The_Bold_Monitor
 
     .. warning:: Not yet tested, debugged, generalised etc...
     .. wisdom and plagiarism
@@ -1038,26 +1066,21 @@ class Bold(Monitor):
         label = "Sampling period (ms)",
         default = 2000.0,
         doc = """For the BOLD monitor, sampling period in milliseconds must be
-            an integral multiple of 500""")
+        an integral multiple of 500. Typical measurment interval (repetition 
+        time TR) is between 1-3 s. If TR is 2s, then Bold period is 2000ms.""")
 
-    tau_s = basic.Float(
-        label = "Dimensionless? exponential decay parameter",
-        default = 0.8)
+    hrf_kernel = equations.HRFKernelEquation(
+        label = "Haemodynamic Response Function",
+        default = equations.FirstOrderVolterra,
+        required = True,
+        doc = """A tvb.datatypes.equation object which describe the haemodynamic
+        response function used to compute the BOLD signal.""") 
 
-    tau_f = basic.Float(
-        label = "Dimensionless? oscillatory parameter",
-        default = 0.4)
-        
-    k1 = basic.Float(
-        label = "First Volterra kernel coefficient",
-        default = 5.6,
-        order = -1)
-        
-    V0 = basic.Float(
-        label = "resting blood volume fraction ",
-        default = 0.02,
-        order = -1)
-
+    hrf_length = basic.Float(
+        label = "Duration (ms)",
+        default = 20000.,
+        doc= """Duration of the hrf kernel""",
+        order=-1)
 
 
     def __init__(self, **kwargs):
@@ -1079,6 +1102,8 @@ class Bold(Monitor):
         self._interim_istep = None
         self._interim_stock = None #I hate bold.
         self._stock_steps = None
+        self._stock_time = None    # Me too
+        self._stock_sample_rate = 2**-2
 
         self.hemodynamic_response_function = None
 
@@ -1088,16 +1113,6 @@ class Bold(Monitor):
         r"""
         Compute the heamodynamic response function.
 
-        .. math::
-            G(t - t^{\prime}) &= 
-             e^{\frac{1}{2} \left(\frac{t - t^{\prime}}{\tau_s} \right)}
-             \frac{\sin\left((t - t^{\prime})
-             \sqrt{\frac{1}{\tau_f} - \frac{1}{4 \tau_s^2}}\right)} 
-             {\sqrt{\frac{1}{\tau_f} - \frac{1}{4 \tau_s^2}}}
-             \; \; \; \; \; \;  for \; \; \; t \geq t^{\prime} \\
-             &= 0 \; \; \; \; \; \;  for \; \; \;  t < t^{\prime}
-
-
         """
 
         #TODO: Current traits limitations require this moved to config_for_sim()
@@ -1105,39 +1120,44 @@ class Bold(Monitor):
             msg = "%s: BOLD.period must be a multiple of 500.0, period = %s"
             LOG.error(msg % (str(self), str(self.period)))
 
-        #Typical scanner TR is 2s, means Bold period 2000ms
+        
 
-        #downsample avereage over simulator steps to give fixed sr (256Hz)
-           #then (18.75 * tau_s) * 256  ==> 3840 required length of _stock
+        #downsample average over simulator steps to give a fixed sampling rate (256Hz)
+        #then (18.75 * tau_s) * 256  ==> 3840 required length of _stock
 
-         # simulation in ms therefore 1000.0/256.0 ==> 3.90625 _interim_period in ms
+        # simulation in ms therefore 1000.0/256.0 ==> 3.90625 _interim_period in ms
         LOG.warning("%s: Needs testing, debugging, etc..." % repr(self))
 
-        magic_sample_rate = 2.0**-2 #/ms #NOTE: An integral multiple of dt
-        magic_number = 19200.0 * self.tau_s #truncates G, see below, once ~zero 
+        self._stock_sample_rate = 2.0**-2 #/ms    # NOTE: An integral multiple of dt
+        magic_number = self.hrf_length #* 0.8      # truncates G, volterra kernel, once ~zero 
 
-        #Length of history needed for convolution in ms
-        required_history_length = magic_sample_rate * magic_number 
+        #Length of history needed for convolution in steps @ _stock_sample_rate
+        required_history_length = self._stock_sample_rate * magic_number # 3840 for tau_s=0.8
         self._stock_steps = numpy.ceil(required_history_length).astype(int)
-        stock_time = numpy.arange(0.0, magic_number/1000.0, magic_number/1000.0/self._stock_steps) #TODO: neaten
+        stock_time_max    = magic_number/1000.0                                # [s]
+        stock_time_step   = stock_time_max / self._stock_steps                 # [s]
+        self._stock_time  = numpy.arange(0.0, stock_time_max, stock_time_step) # [s]
 
-        # The Heamodynamic response function.
-        sqrt_tfts = numpy.sqrt(1.0/self.tau_f - 1.0/(4.0*self.tau_s**2))
-        exp_ts = numpy.exp(-0.5*(stock_time/self.tau_s))
-        G = exp_ts * (numpy.sin(sqrt_tfts * stock_time) / sqrt_tfts)
+        LOG.debug("%s: Required history length for performing convolution = %s" % 
+                (str(self), self._stock_steps))
+
+        
+        #Compute the HRF kernel
+        self.hrf_kernel.pattern = self._stock_time
+        G = self.hrf_kernel.pattern
 
         #Reverse it, need it into the past for matrix-multiply of stock
         G = G[::-1]
         self.hemodynamic_response_function = G[numpy.newaxis, :]
+
 
         util.log_debug_array(LOG, self.hemodynamic_response_function,
                              "hemodynamic_response_function",
                              owner=self.__class__.__name__)
 
         #Interim stock configuration
-        self._interim_period = 1.0 / magic_sample_rate #period in ms
-        self._interim_istep = int(round(self._interim_period / self.dt))
-
+        self._interim_period = 1.0 / self._stock_sample_rate #period in ms
+        self._interim_istep = int(round(self._interim_period / self.dt)) # interim period in integration time steps
 
 
     def config_for_sim(self, simulator):
@@ -1162,12 +1182,12 @@ class Bold(Monitor):
                       simulator.model.number_of_modes)
         LOG.debug("%s: stock_size is %s" % (str(self), str(stock_size)))
 
-        #Set the inital _stock based on simulator.history
+        #Set the initingal _stock based on simulator.history
         mean_history = numpy.mean(simulator.history[:, self.voi, :, :], axis=0)
         self._stock = mean_history[numpy.newaxis,:] * numpy.ones(stock_size)
         #NOTE: BOLD can have a long (~15s) transient that is mainly due to the
         #      initial dynamic transient from simulations that are started with 
-        #      imperfect initlial conditions.
+        #      imperfect initial conditions.
         #import pdb; pdb.set_trace()
 
 
@@ -1194,7 +1214,12 @@ class Bold(Monitor):
             hrf = numpy.roll(self.hemodynamic_response_function,
                              ((step/self._interim_istep % self._stock_steps) - 1),
                              axis=1)
-            bold = (numpy.dot(hrf, self._stock.transpose((1, 2, 0, 3))) - 1.0) * (self.k1 * self.V0 / 3.0)
+            if isinstance(self.hrf_kernel, equations.FirstOrderVolterra):
+                k1_V0 = self.hrf_kernel.parameters["k_1"] * self.hrf_kernel.parameters["V_0"]
+                bold = (numpy.dot(hrf, self._stock.transpose((1, 2, 0, 3))) - 1.0) * k1_V0
+            else:
+                #import pdb; pdb.set_trace()
+                bold = numpy.dot(hrf, self._stock.transpose((1, 2, 0, 3)))
             bold = bold.reshape(self._stock.shape[1:])
             bold = bold.sum(axis=0)[numpy.newaxis,:,:] #state-variables
             bold = bold.sum(axis=2)[:,:,numpy.newaxis] #modes
@@ -1226,6 +1251,7 @@ class BoldRegionROI(Bold):
                               for i in xrange(self.region_mapping.max())])]
         else:
             return None
+
 
 class BoldMultithreaded(Bold):
     """

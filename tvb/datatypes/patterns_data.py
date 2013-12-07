@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -59,7 +59,7 @@ class SpatioTemporalPatternData(SpatialPatternData):
     Combine space and time equations.
     """
 
-    temporal = equations.Equation(label="Temporal Equation", order=3)
+    temporal = equations.TemporalApplicableEquation(label="Temporal Equation", order=3)
     #space must be shape (x, 1); time must be shape (1, t)
 
 
@@ -73,8 +73,8 @@ class StimuliRegionData(SpatioTemporalPatternData):
 
     connectivity = connectivity_module.Connectivity(label="Connectivity", order=1)
 
-    spatial = equations.Discrete(label="Spatial Equation", default=equations.Discrete,
-                                 fixed_type=True, order=-1)
+    spatial = equations.DiscreteEquation(label="Spatial Equation", default=equations.DiscreteEquation,
+                                         fixed_type=True, order=-1)
 
     weight = basic.List(label="scaling", locked=True, order=4)
 

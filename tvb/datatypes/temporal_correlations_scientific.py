@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -43,19 +43,20 @@ LOG = get_logger(__name__)
 
 
 class CrossCorrelationScientific(temporal_correlations_data.CrossCorrelationData):
-    """ This class exists to add scientific methods to CrossCorrelationData. """
+    """
+    This class exists to add scientific methods to CrossCorrelationData.
+    """
     __tablename__ = None
     
     
     def _find_summary_info(self):
         """
-        Gather scientifically interesting summary information from an instance
-        of this datatype.
+        Gather scientifically interesting summary information from an instance of this datatype.
         """
-        summary = {"Temporal correlation type": self.__class__.__name__}
-        summary["Source"] = self.source.title
-        summary["Dimensions"] = self.labels_ordering
-        #summary["Dimensions"] = ["Offsets", "Node", "Node","State Variable", "Mode"]
+        summary = {"Temporal correlation type": self.__class__.__name__,
+                   "Source": self.source.title,
+                   "Dimensions": self.labels_ordering}
+
         summary.update(self.get_info_about_array('array_data'))
         return summary
 

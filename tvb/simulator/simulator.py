@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -373,8 +373,10 @@ class Simulator(core.Type):
         self._calculate_storage_requirement()
 
         if random_state is not None:
-            if self.integrator is integrators_module.IntegratorStochastic:
+            if isinstance(self.integrator, integrators_module.IntegratorStochastic):
                 self.integrator.noise.random_stream.set_state(random_state)
+                #msg = "%s: random_state supplied. Seed is: %s"
+                #LOG.info(msg % str(self, self.integrator.noise.random_stream.get_state()[1][0]))
             else:
                 msg = "%s: random_state supplied for non-stochastic integration"
                 LOG.warn(msg % str(self))
@@ -439,6 +441,8 @@ class Simulator(core.Type):
                                            shape=(self.number_of_nodes,
                                                   self.number_of_nodes))
                 local_coupling = sp_cs * self.surface.local_connectivity.matrix
+
+            local_coupling = local_coupling.tocsr()
 
         if self.stimulus is None:
             stimulus = 0.0
@@ -559,7 +563,7 @@ class Simulator(core.Type):
 
         """
 
-        noise = self.integrator.noise
+        noise = self.integrator.noise        
 
         if self.integrator.noise.ntau > 0.0:
             self.integrator.noise.configure_coloured(self.integrator.dt,
@@ -592,6 +596,7 @@ class Simulator(core.Type):
 
         LOG.debug("Simulator.integrator.noise.nsig shape: %s" % str(nsig.shape))
         self.integrator.noise.nsig = nsig
+        #LOG.debug("Simulator.integrator.noise.random_stream seed is: %s" % str(self.integrator.noise.random_stream.trait.value.get_state()[1][0]))
 
 
     def configure_monitors(self):
@@ -731,7 +736,7 @@ class Simulator(core.Type):
                         memreq += number_of_nodes * 62.0 * bits_64
 
             else:
-                stock_shape = (19200.0 * monitor.tau_s * 2.0**-2, 
+                stock_shape = (monitor.hrf_length * monitor._stock_sample_rate,
                                self.model.variables_of_interest.shape[0],
                                number_of_nodes,
                                self.model.number_of_modes)
@@ -794,41 +799,27 @@ class Simulator(core.Type):
 
     def _guesstimate_runtime(self):
         """
-        Guestimate the runtime for this simulator.
+        Estimate the runtime for this simulator.
 
-        Automatic parallelisation of larger arrays means this will be an over
-        estimate, or rather a sinle threaded estimate...
-        Different choice of interators and monitors has an additional effect,
+        Spread in parallel executions of larger arrays means this will be an over-estimation,
+        or rather a single threaded estimation...
+        Different choice of integrators and monitors has an additional effect,
         on the magic number though relatively minor
 
         """
-#        day = 86400 # seconds
-#        week = 604800 # seconds
-
-        #TODO: in the longer run we should generate the magic number used here
-        #      for the local platform, perhaps as part of installation/setup.
-        #      currently this is the approximate value for my system.
-        magic_number = 6.57e-06 # seconds
-
-        self._runtime = (magic_number * self.number_of_nodes * self.model.nvar *
-                         self.model.number_of_modes * self.simulation_length /
-                         self.integrator.dt)
-
-#        if self._runtime > week:
-#            LOG.error()
-#        elif self._runtime > day:
-#            LOG.warning()
-#        else:
-        msg = "Single-threaded runtime should be about %s seconds"
+        magic_number = 6.57e-06  # seconds
+        self._runtime = (magic_number * self.number_of_nodes * self.model.nvar * self.model.number_of_modes *
+                         self.simulation_length / self.integrator.dt)
+        msg = "Simulation single-threaded runtime should be about %s seconds!"
         LOG.info(msg % str(int(self._runtime)))
 
 
     def _calculate_storage_requirement(self):
         """
-        Calculate the storage requirement for the simulator, cofigured with 
+        Calculate the storage requirement for the simulator, configured with
         models, monitors, etc being run for a particular simulation length. 
-        While this is only approximate, it is far more reliable/acurate than 
-        the memory and runtime guestimates.
+        While this is only approximate, it is far more reliable/accurate than
+        the memory and runtime guesstimates.
         """
         LOG.info("Calculating storage requirement for ...")
         strgreq = 0

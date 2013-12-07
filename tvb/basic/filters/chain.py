@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -43,9 +43,9 @@ list are supported.
 
 In order to define a default filter, from the adapter interface add::
 
-'conditions': FilterChain(fields= [FilterChain.datatype + ".subject", FilterChain.datatype + ".some_attribute",
-                          values= [["John Doe", "JohnDoe1"], "Some Attr Value"], operations= ["in", "=="])
-                        
+    'conditions': FilterChain(fields= [FilterChain.datatype + ".subject", FilterChain.datatype + ".some_attribute",
+                              values= [["John Doe", "JohnDoe1"], "Some Attr Value"], operations= ["in", "=="])
+
 If you want to add a filter to a XML interface::
 
     <input required="True">
@@ -275,8 +275,10 @@ class FilterChain(object):
         The input to this method should be a string representing the name under which 
         the variable you want to be filtered was binded in the callers namespace.
         e.g.  
+
         def foo(var_to_filter, filter_entity):
             filter_entity.get_sql_filter_equivalent('var_to_filter')
+
         """
 
         if self.fields is None or len(self.fields) == 0:

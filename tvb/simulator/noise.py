@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -133,15 +133,19 @@ class noise_device_info(object):
     def n_nspr(self):
         # par1_svar1, par1_svar2... par1_svar1...
         n = 0
-        for par in self._pars:
-            attr = getattr(self.inst, par.trait.name)
+        for p in self._pars:
+	    p_ = p if type(p) in (str, unicode) else p.trait.name
+            attr = getattr(self.inst, p_)
             n += attr.size
             # assuming given parameters have correct size
         return n
 
     @property
     def nspr(self):
-        pars = [getattr(self.inst, p.trait.name).flat[:] for p in self._pars]
+        pars = []
+	for p in self._pars:
+	    p_ = p if type(p) in (str, unicode) else p.trait.name
+	    pars.append(getattr(self.inst, p_).flat[:])
         return numpy.hstack(pars)
 
     @property
@@ -157,6 +161,7 @@ class noise_device_info(object):
 
     def __set__(self, inst, val):
         raise AttributeError
+
 
 class Noise(core.Type):
     """
@@ -189,7 +194,7 @@ class Noise(core.Type):
     .. automethod:: Noise.coloured
 
     """
-    _base_classes = ['Noise']
+    _base_classes = ['Noise', 'MultiplicativeSimple']
 
     #NOTE: nsig is not declared here because we use this class directly as the 
     #      inital conditions noise source, and in that use the job of nsig is 
@@ -375,7 +380,7 @@ class Additive(Noise):
         return g_x
 
     device_info = noise_device_info(
-        pars = [nsig],
+        pars = ['nsig'],
         kernel="""
         float nsig;
         for (int i_svar=0; i_svar<n_svar; i_svar++)
@@ -417,7 +422,7 @@ class Multiplicative(Noise):
         Sensible values are typically ~<< 1% of the dynamic range of a Model's
         state variables.""")
 
-    b = equations.Equation(
+    b = equations.TemporalApplicableEquation(
         label = ":math:`b`",
         default = equations.Linear(parameters = {"a": 1.0, "b": 0.0}),
         doc = """A function evaluated on the state-variables, the result of
@@ -449,6 +454,7 @@ class Multiplicative(Noise):
         g_x = numpy.sqrt(2.0 * self.nsig) * self.b.pattern  
 
         return g_x
+
 
 class MultiplicativeSimple(Multiplicative):
     """

@@ -24,7 +24,7 @@
 #   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
 #   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
 #       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (in press)
+#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
 #
 #
 
@@ -64,6 +64,10 @@ ugly
 HeunStoch doesn't like ReducedHMR, makes lots of NaaN.
 
 
+debugging (july/2013)
+---------------------
+
+
 .. moduleauthor:: marmaduke woodman <mw@eml.cc>
 
 """
@@ -74,44 +78,52 @@ import itertools
 from numpy import *
 
 from tvb.simulator import lab
-from tvb.simulator.backend import driver_conf
-driver_conf.using_gpu = 0
-from tvb.simulator.backend import driver
-reload(driver)
+from tvb.simulator.backend import cee, cuda, driver
+map(reload, [driver, cee, cuda])
 
 sim = lab.simulator.Simulator(
     model = lab.models.Generic2dOscillator(),
-    connectivity = lab.connectivity.Connectivity(speed=4.0),
-    coupling = lab.coupling.Linear(a=1e-2),                                         # shape must match model..
-    integrator = lab.integrators.HeunStochastic(dt=2**-5, noise=lab.noise.Additive(nsig=ones((2, 1, 1))*1e-2)),
+    connectivity = lab.connectivity.Connectivity(speed=300.0),
+    coupling = lab.coupling.Linear(a=1e-2),
+    integrator = lab.integrators.HeunStochastic(
+        dt=2**-5, 
+        noise=lab.noise.Additive(nsig=ones((2, 1, 1))*1e-5)
+    ),
     monitors = lab.monitors.Raw()
 )
 
 sim.configure()
 
 # then build device handler and pack it iwht simulation
-dh = driver.device_handler.init_like(sim)
-dh.n_thr = 1
+dh = cuda.Handler.init_like(sim)
+dh.n_thr = 64
+dh.n_rthr = dh.n_thr
 dh.fill_with(0, sim)
+for i in range(1, dh.n_thr):
+    dh.fill_with(i, sim)
 
+print 'required mem ', dh.nbytes/2**30.
 
 # run both with raw monitoring, compare output
 simgen = sim(simulation_length=100)
 cont = True
 
-ys1,ys2 = [], []
+ys1,ys2, ys3 = [], [], []
+et1, et2 = 0.0, 0.0
 while cont:
 
     # simulator output
     try:
         # history & indicies
-        histidx = ((sim.current_step - 1 - sim.connectivity.idelays)%sim.horizon)[:4, :4].flat[:]*74 + r_[:4, :4, :4, :4]
-        histval = [sim.history[(sim.current_step - 1 - sim.connectivity.idelays[10,j])%sim.horizon, 0, j, 0] for j in range(dh.n_node)]
+        #histidx = ((sim.current_step - 1 - sim.connectivity.idelays)%sim.horizon)[:4, :4].flat[:]*74 + r_[:4, :4, :4, :4]
+        #histval = [sim.history[(sim.current_step - 1 - sim.connectivity.idelays[10,j])%sim.horizon, 0, j, 0] for j in range(dh.n_node)]
         #print 'histidx', histidx
         #print 'hist[idx]', histval
 
+        tic = lab.time()
         t1, y1 = next(simgen)[0]
         ys1.append(y1)
+        et1 += lab.time() - tic
     except StopIteration:
         break
 
@@ -120,8 +132,9 @@ while cont:
     #print 'state dh ', dh.x.value.transpose((1, 0, 2))[:, -1, 0]
 
 
+    tic = lab.time()
     # dh output
-    driver.gen_noise_into(dh.ns, dh.inpr.value[0])
+    cuda.gen_noise_into(dh.ns, dh.inpr.value[0])
     dh()
 
     #print 'I sim', sim.coupling.ret[0, 10:15, 0]
@@ -131,8 +144,15 @@ while cont:
     #print 'dx1 dh ', dh.dx1.value.flat[:]
     
     t2 = dh.i_step*dh.inpr.value[0]
-    y2 = dh.x.value.reshape((dh.n_node, -1, dh.n_mode)).transpose((1, 0, 2))
+    _y2 = dh.x.value.reshape((dh.n_node, -1, dh.n_mode)).transpose((1, 0, 2))
+    #ys3.append(_y2)
+
+    # in this case where our simulations are all identical, the easiest
+    # comparison, esp. to check that all threads on device behave, is to
+    # randomly sample one of the threads at each step (right?)
+    y2 = _y2[0]
     ys2.append(y2)
+    et2 += lab.time() - tic
 
     if dh.i_step % 100 == 0:
         stmt = "%4.2f\t%4.2f\t%.3f"
@@ -140,18 +160,21 @@ while cont:
 
 ys1 = array(ys1)
 ys2 = array(ys2)
+#ys3 = array(ys3)
+#print ys3.shape, ys3.nbytes/2**30.0
 
-print ys1.flat[::450]
-print ys2.flat[::450]
-
-savez('debug.npz', ys1=ys1, ys2=ys2)
+print et1, et2, et2*1./dh.n_thr
+#print ys1.flat[::450]
+#print ys2.flat[::450]
+savez('debug.npz', ys1=ys1, ys2=ys2)#, ys3=ys3)
 
 from matplotlib import pyplot as pl
 
 pl.figure(2)
 pl.clf()
 pl.subplot(311), pl.imshow(ys1[:, 0, :, 0].T, aspect='auto', interpolation='nearest'), pl.colorbar()
-pl.subplot(312), pl.imshow(ys2[:, 0, :, 0].T, aspect='auto', interpolation='nearest'), pl.colorbar()
-pl.subplot(313), pl.imshow(((ys1 - ys2)/ys1.ptp())[:, 0, :, 0].T, aspect='auto', interpolation='nearest'), pl.colorbar()
+pl.subplot(312), pl.imshow(ys2[:,    :, 0].T, aspect='auto', interpolation='nearest'), pl.colorbar()
+pl.subplot(313), pl.imshow(100*((ys1[:, 0] - ys2)/ys1.ptp())[..., 0].T, aspect='auto', interpolation='nearest'), pl.colorbar()
 
-pl.show()
+#pl.show()
+pl.savefig('debug.png')
