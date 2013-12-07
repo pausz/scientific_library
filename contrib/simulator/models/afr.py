@@ -44,15 +44,11 @@ NOTE: can't match Robinson etal exactly, except with a customised connectivity
 import numpy
 
 #The Virtual Brain
-try:
-    import tvb.core.logger as logger
-    LOG = logger.getLogger(parent_module=__name__, config_root='tvb.simulator')
-except ImportError:
-    import logging
-    LOG = logging.getLogger(__name__)
+from tvb.simulator.common import get_logger
+LOG = get_logger(__name__)
 
 import tvb.simulator.models as models
-import tvb.core.traits.basic as basic
+import tvb.basic.traits.types_basic as basic
 import tvb.datatypes.arrays as arrays
 
 

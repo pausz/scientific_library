@@ -38,6 +38,8 @@ USAGE::
 
 """
 
+#TODO: this will make most sense as a method on Surface datatypes... 
+
 import numpy
 from scipy import sparse
 

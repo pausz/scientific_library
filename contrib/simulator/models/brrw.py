@@ -23,16 +23,34 @@ NOTE: Explicit inclusion of corticothalamic delays
 import numpy
 
 #The Virtual Brain
-try:
-    import tvb.core.logger as logger
-    LOG = logger.getLogger(parent_module=__name__, config_root='tvb.simulator')
-except ImportError:
-    import logging
-    LOG = logging.getLogger(__name__)
+from tvb.simulator.common import get_logger
+LOG = get_logger(__name__)
 
 import tvb.simulator.models as models
-import tvb.core.traits.basic as basic
+import tvb.basic.traits.types_basic as basic
 import tvb.datatypes.arrays as arrays
+
+
+class Sigmoid(object):
+    """
+    """
+    
+    def __init__(self, qmax, theta, sigma):
+        """
+        
+        
+        """
+        self.qmax = qmax
+        self.theta = theta
+        self.sigma = sigma
+        self.npionsqrt3 = -numpy.pi / numpy.sqrt(3.0)
+    
+    def __call__(self, x):
+        """
+        """
+        val = self.qmax / (1.0 + numpy.exp(self.npionsqrt3 * (self.theta - x) / self.sigma))
+        return val
+
 
 
 
@@ -185,12 +203,26 @@ class BRRW(models.Model):
         range = basic.Range(lo = 0.0, hi = 5.0), 
         doc = """Specific to reticular thalamic nuclei gain/coupling
             (mV ms)""")
+    
+    variables_of_interest = basic.Enumerate(
+        label="Variables watched by Monitors",
+        options=["phi_e", "dphi_e", "V_e", "dV_e", "V_s", "dV_s", "V_r", "dV_r"],
+        default=["phi_e"],
+        select_multiple=True,
+        doc = """This represents the default state-variables of this Model to be
+        monitored. It can be overridden for each Monitor if desired.""")
             
     #Proposed informational attribute, used for phase-plane and initial()
-    state_variable_range = arrays.FloatArray(
-        label = "State Variables range [[lo], [hi]].",
-        default = numpy.array([[-3.0, -6.0],
-                               [3.0, 6.0]]),
+    state_variable_range = basic.Dict(
+        label="State Variable ranges [lo, hi]",
+        default={"phi_e": numpy.array([-6.0, 6.0]),
+                 "dphi_e": numpy.array([-3.0, 3.0]),
+                 "V_e": numpy.array([-1.0, 1.0]),
+                 "dV_e": numpy.array([-3.0, 3.0]),
+                 "V_s": numpy.array([-1.0, 1.0]),
+                 "dV_s": numpy.array([-3.0, 3.0]),
+                 "V_r": numpy.array([-1.0, 1.0]),
+                 "dV_r": numpy.array([-3.0, 3.0])},
         doc = """":math:`\\phi_e`: Field potential, excitatory population.
             :math:`d\\phi_e`: Field potential derivative, excitatory population.
             :math:`V_e`: Membrane potential, excitatory population.
@@ -212,66 +244,67 @@ class BRRW(models.Model):
         
         super(BRRW, self).__init__(**kwargs)
         
-        self._state_variables = ["phi_e", "dphi_e", "V_e", "dV_e",
-                                 "V_s", "dV_s", "V_r", "dV_r"]
         self._nvar = 8 #len(self._state_variables)
         self.cvar = numpy.array([0, 4], dtype=numpy.int32)
-        self.voi = numpy.array([0], dtype=numpy.int32)
         
         
         self.axb = None
         self.apb = None
         
+        self.sigmoidal_e = None
+        self.sigmoidal_s = None
+        self.sigmoidal_r = None
+        
         LOG.debug("%s: inited." % repr(self))
     
     
-    def initial(self, history_shape): #**kwargs
-        """
-        Set initial conditions to:
+    # def initial(self, dt, history_shape): #**kwargs
+    #     """
+    #     Set initial conditions to:
             
-            .. math::
-                V(0) &\\in \\left[-3.0, 3.0 \\right] \\\\
-                W(0) &\\in \\left[-6.0, 6.0 \\right]
+    #         .. math::
+    #             V(0) &\\in \\left[-3.0, 3.0 \\right] \\\\
+    #             W(0) &\\in \\left[-6.0, 6.0 \\right]
         
-        """
-        #TODO: Should make inital() parameterisable, with default to sensible
-        #state variable ranges (defined as model traits), which could then also 
-        #be used as default ranges in model tests via phase-plane... 
-        initial_conditions = self.random_stream.uniform(size=history_shape)
-        initial_conditions[:, 0, :] = ((initial_conditions[:, 0, :] * 
-                                       (self.state_variable_range[1, 0] - 
-                                        self.state_variable_range[0, 0])) +
-                                       self.state_variable_range[0, 0])
-        initial_conditions[:, 1, :] = ((initial_conditions[:, 1, :] * 
-                                       (self.state_variable_range[1, 1] - 
-                                        self.state_variable_range[0, 1])) +
-                                       self.state_variable_range[0, 1])
-        initial_conditions[:, 2, :] = ((initial_conditions[:, 2, :] * 
-                                       (self.state_variable_range[1, 2] - 
-                                        self.state_variable_range[0, 2])) +
-                                       self.state_variable_range[0, 2])
-        initial_conditions[:, 3, :] = ((initial_conditions[:, 3, :] * 
-                                       (self.state_variable_range[1, 3] - 
-                                        self.state_variable_range[0, 3])) +
-                                       self.state_variable_range[0, 3])
-        initial_conditions[:, 4, :] = ((initial_conditions[:, 4, :] * 
-                                       (self.state_variable_range[1, 4] - 
-                                        self.state_variable_range[0, 4])) +
-                                       self.state_variable_range[0, 4])
-        initial_conditions[:, 5, :] = ((initial_conditions[:, 5, :] * 
-                                       (self.state_variable_range[1, 5] - 
-                                        self.state_variable_range[0, 5])) +
-                                       self.state_variable_range[0, 5])
-        initial_conditions[:, 6, :] = ((initial_conditions[:, 6, :] * 
-                                       (self.state_variable_range[1, 6] - 
-                                        self.state_variable_range[0, 6])) +
-                                       self.state_variable_range[0, 6])
-        initial_conditions[:, 7, :] = ((initial_conditions[:, 7, :] * 
-                                       (self.state_variable_range[1, 7] - 
-                                        self.state_variable_range[0, 7])) +
-                                       self.state_variable_range[0, 7])
+    #     """
+    #     #TODO: Should make inital() parameterisable, with default to sensible
+    #     #state variable ranges (defined as model traits), which could then also 
+    #     #be used as default ranges in model tests via phase-plane... 
+    #     initial_conditions = self.random_stream.uniform(size=history_shape)
+    #     initial_conditions[:, 0, :] = ((initial_conditions[:, 0, :] * 
+    #                                    (self.state_variable_range[1, 0] - 
+    #                                     self.state_variable_range[0, 0])) +
+    #                                    self.state_variable_range[0, 0])
+    #     initial_conditions[:, 1, :] = ((initial_conditions[:, 1, :] * 
+    #                                    (self.state_variable_range[1, 1] - 
+    #                                     self.state_variable_range[0, 1])) +
+    #                                    self.state_variable_range[0, 1])
+    #     initial_conditions[:, 2, :] = ((initial_conditions[:, 2, :] * 
+    #                                    (self.state_variable_range[1, 2] - 
+    #                                     self.state_variable_range[0, 2])) +
+    #                                    self.state_variable_range[0, 2])
+    #     initial_conditions[:, 3, :] = ((initial_conditions[:, 3, :] * 
+    #                                    (self.state_variable_range[1, 3] - 
+    #                                     self.state_variable_range[0, 3])) +
+    #                                    self.state_variable_range[0, 3])
+    #     initial_conditions[:, 4, :] = ((initial_conditions[:, 4, :] * 
+    #                                    (self.state_variable_range[1, 4] - 
+    #                                     self.state_variable_range[0, 4])) +
+    #                                    self.state_variable_range[0, 4])
+    #     initial_conditions[:, 5, :] = ((initial_conditions[:, 5, :] * 
+    #                                    (self.state_variable_range[1, 5] - 
+    #                                     self.state_variable_range[0, 5])) +
+    #                                    self.state_variable_range[0, 5])
+    #     initial_conditions[:, 6, :] = ((initial_conditions[:, 6, :] * 
+    #                                    (self.state_variable_range[1, 6] - 
+    #                                     self.state_variable_range[0, 6])) +
+    #                                    self.state_variable_range[0, 6])
+    #     initial_conditions[:, 7, :] = ((initial_conditions[:, 7, :] * 
+    #                                    (self.state_variable_range[1, 7] - 
+    #                                     self.state_variable_range[0, 7])) +
+    #                                    self.state_variable_range[0, 7])
         
-        return initial_conditions
+    #     return initial_conditions
     
     
     def dfun(self, state_variables, coupling, local_coupling=0.0):
@@ -316,7 +349,7 @@ class BRRW(models.Model):
         
         sig_ve = self.sigmoidal_e(V_e) #,P.Qmax,P.Theta_e,P.sigma_e);
         
-        #TODO: phi_n: replaceable with state variable specific nsig support
+        #TODO: phi_n: replaceable with state variable specific nsig support:  self.axb *  self.nu_sn * self.phi_n[k,:]
         
         #TODO: Need to specify nu_* and V_* in terms of reggion...
         
@@ -328,11 +361,10 @@ class BRRW(models.Model):
         FV_e = dV_e
         FdV_e = self.axb * (self.nu_ee * phi_e  + self.nu_ei * sig_ve + self.nu_es * self.sigmoidal_s(c_1) - V_e) - self.apb * dV_e         #,self.qmax,self.theta_s,self.sigma_s
         FV_s = dV_s
-        FdV_s = self.axb * (self.nu_se * c_0 + self.nu_sr * self.sigmoidal_r(V_r) + self.nu_sn * self.phi_n[k,:] - V_s) - self.apb * dV_s   #,self.qmax,self.theta_r,self.sigma_r
+        FdV_s = self.axb * (self.nu_se * c_0 + self.nu_sr * self.sigmoidal_r(V_r) - V_s) - self.apb * dV_s   #,self.qmax,self.theta_r,self.sigma_r
         FV_r = dV_r
         FdV_r = self.axb * (self.nu_re * c_0 + self.nu_rs * self.sigmoidal_s(V_s) - V_r) - self.apb * dV_r                                  #,self.qmax,self.theta_s,self.sigma_s
 
-        
         
         derivative = numpy.array([Fphi_e, Fdphi_e, FV_e, FdV_e, FV_s, FdV_s, FV_r, FdV_r])
         
@@ -352,4 +384,10 @@ class BRRW(models.Model):
         self.axb = self.alfa * self.btta
         self.apb = self.alfa + self.btta
         ###self.dtcsf = options.Integration.dt * self.csf
+        
+        
+        self.sigmoidal_e = Sigmoid(self.qmax, self.theta_e, self.sigma_e)
+        self.sigmoidal_s = Sigmoid(self.qmax, self.theta_s, self.sigma_s)
+        self.sigmoidal_r = Sigmoid(self.qmax, self.theta_r, self.sigma_r)
+        
     
