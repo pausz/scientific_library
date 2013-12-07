@@ -16,7 +16,7 @@ corticothalamic model of [RRW1997]_. The spatial term is reintroduced on A2.
 NOTE: Explicit inclusion of corticothalamic delays
 
 
-.. moduleauthor:: Stuart A. Knock <Stuart@tvb.invalid>
+.. moduleauthor:: Stuart A. Knock <stuart.knock@gmail.com>
 
 """
 
@@ -199,7 +199,7 @@ class BRRW(models.Model):
             :math:`dV_s`: Membrane potential derivative, 'specific' population.
             :math:`V_r`: Membrane potential, 'reticular' population.
             :math:`dV_r`: Membrane potential derivative, 'reticular' population.""")
-
+    
     
     
     def __init__(self, **kwargs):

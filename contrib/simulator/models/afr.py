@@ -37,7 +37,7 @@ NOTE: can't match Robinson etal exactly, except with a customised connectivity
 
 
 
-.. moduleauthor:: Stuart A. Knock <Stuart@tvb.invalid>
+.. moduleauthor:: Stuart A. Knock <stuart.knock@gmail.com>
 
 """
 

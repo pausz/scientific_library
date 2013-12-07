@@ -34,7 +34,7 @@ USAGE::
     #closer to zero these values are the better.
     figure, plot(Convergence ./ max(lap_op))
 
-.. moduleauthor:: Stuart A. Knock <Stuart@tvb.invalid>
+.. moduleauthor:: Stuart A. Knock <stuart.knock@gmail.com>
 
 """
 
@@ -44,12 +44,15 @@ from scipy import sparse
 
 def MeshLaplacian(surface, cutoff):  #function [lap_op, Convergence] = 
     """
+    Calculate a discrete approximation of the Laplace-Beltrami operator for a 
+    Surface object from TVB's datatypes.
+
     """
     nv = surface.number_of_vertices
     
     # NOTE: 'h' needs to be set such that the last vertices inside cutoff contribute ~ 0...
     h = cutoff / 3.0 #~3std
-    h4 = h * 4; #QUERY: should it be h^2 so exp(...) is dimensionless???
+    h4 = h * 4.0; #QUERY: should it be h^2 so exp(...) is dimensionless???
     
     c1 = 1.0 / (12.0 * numpy.pi * h**2) #NOTE: 12 = 4 * 3, where 3 is vertices per triangle
     
